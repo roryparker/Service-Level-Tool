@@ -12,5 +12,3 @@
 
 
 Azure Monitor Supported Metrics: https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/metrics-supported
-
-Video Link: https://hrblock-my.sharepoint.com/personal/luca_carre_hrblock_com/_layouts/15/stream.aspx?id=%2Fpersonal%2Fluca%5Fcarre%5Fhrblock%5Fcom%2FDocuments%2FRecordings%2FAPIM%20alerts%20configuration%2D20221017%5F100331%2DMeeting%20Recording%2Emp4&ga=1
