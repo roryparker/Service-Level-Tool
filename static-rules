@@ -1,0 +1,6 @@
+---+ SLO/SLI Generator - Default dynamic alert rules
+| *Resource type* | *Metrics* |
+| Microsoft.Web/sites | <p>HttpResponseTime</p> <p>Http5xx</p> <p>Http4xx</p> |
+| Microsoft.Network/applicationGateways | <p>ApplicationGatewayTotalTime</p> <p>BackendConnectTime</p> |
+| Microsoft.Sql/servers/databases | <p>app_cpu_percent</p> <p>cpu_used</p> <p>dtu_used</p> <p>dwu_used</p> <p>sqlserver_process_core_percent</p> |
+| Microsoft.Sql/servers/elasticPools | <p>cpu_percent</p> <p>dtu_consumption_percent</p> |
