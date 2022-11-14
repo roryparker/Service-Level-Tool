@@ -1,0 +1,46 @@
+---++ Create/update/delete alerts
+
+There are 2 ways to create alerts using the tool:
+   * Automatically
+   * Manually
+<u> *Automatic creation* </u>
+
+The tool perform a series of consecutive calls to some Log Analytics functions and extract the SLO/SLI that define the alert thresholds.
+
+The SLO/SLI are calculated exclusively for the resources contained in the Resource Group onboarded.
+
+To onboard/offboard a Resource Group, please go to the Git Repo 
+
+Please note that adding a new Resource Group results in creating all the pre-configured alerts for the resources contained in the Resource Group.
+
+<u>Removing a Resource Group results in deleting all the pre-configured alerts for the resources contained in the Resource Group.</u>
+
+Every time the pipeline is triggered, the values are automatically updated with the newly calculated values.
+
+<u> *Manual creation* </u>
+
+It is also possible to create alert rules based on user-provided thresholds. The reasons to do that might be:
+   * Insufficient data in the Log Analytics workspace generates inaccurate SLO/SLIs
+   * The target resource is outside of the onboarded Resource Group list
+   * Others
+In order to create a new manual alert rule, please create a new JSON file in the *manual* folder of the <span><a href='https://dev.azure.com/hrblock/Cloud/_git/monitoring-alert-descriptors' rel='noopener' target='_blank'></span>monitoring-alert-descriptors<span></a></span> repository:
+
+
+The JSON descriptors are organized by Environment as shown in the screenshot above.
+
+<u>Please note that creating a JSON file containing an alert descriptor (JSON object) with the same name and same metric namespace results in a manual override of the auto-calculated threshold. In other words, manual alert descriptors always win over auto alert descriptors.</u>
+
+Example of an alert rule descriptor:
+
+
+<u> *Updating Alerts* </u>
+
+To update an alert rule, go to the auto folder if it's dynamic or the manual folder if it's a static rule in the <span><a href='https://dev.azure.com/hrblock/Cloud/_git/monitoring-alert-descriptors' rel='noopener' target='_blank'> alert-rules-descriptor</a> repo and find the JSON file. To change dynamic values look in the dynamic folder, there look for auto or manual if it is an auto created file or manual if it is a custom value. For static alerts look in the manual folders for the JSON file you would like to change.</span>
+<h2 id='Create_47update_47delete_alerts'>Branching strategy</h2>
+
+In order to customize alert thresholds or create new ones, a standard "branching" process applies.
+   1 Create a new branch from the _master_ branch
+   1 Create/edit the files in the _manual_ folder(s)
+   1 <u>Commit</u> and <u>push</u> the changes
+   1 Submit a PR merging the<u> feature branch into the master branch</u>
+   1 A group of approver will review the PR and approve if no further adjustments are required
