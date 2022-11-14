@@ -1,4 +1,6 @@
 Add the environment to the ALR_info.yml
+
+Add to the static or dynamic onboarding file.
 Follow the standard PLv3 onboarding process
 Once the environment is created by TFE, the SPN called <env>-ALR-ADO-SERVICE-CONNECTION-SPN will be created as well. Ensure the SPN belongs to the HRB-AZURE-<env>-READER security group. You might need to create a BMC ticket to have the group assigned if you can't assign the AAD group by yourself.
 Create the service connection in ADO based on the SPN mentioned above
