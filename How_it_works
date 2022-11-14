@@ -1,0 +1,101 @@
+SLO/SLI Generator Deep Dive
+Introduction
+Due to many moving parts of the SLO SLI Generator, I wanted to document the System Design to simplify how the SLO/SLI Generator how it works line by line. The initial difficulty surrounding learning about the generator stems from the development languages used, multiple functions, local queries, and remote log analytics queries used.
+
+Development Languages
+PowerShell is used as the primary development langauge. It is used to push to pipelines and repositories located in Azure. For more on PowerShell, the best tutorial is located here: PowerShell Master Class with John Savill. He runs through a clean introduction to PowerShell to help grasp the language making things easier. Many scripts use PowerShell Modules located in the PowerShell Gallery or PowerShell Module Browser.
+Kusto Query Language (KQL) is used within several PowerShell scripts used by the SSG. KQL is a Microsoft Azure language used to mimic SQL. We use KQL to gather data and calculate metrics for applications and services on the Azure platform. Local queries are found inside multiple SSG scripts, while Web based queries are located in Azure inside Log Analytics. Microsoft has a Kusto Query Language Tutorial and Marcus Bakker has a KQL Cheat Sheet that provides a ton of help with the language.
+Monitoring JSON Generator Pipeline
+The SLO/SLI Generator starts by running the pipeline and scripts associated with the Monitoring JSON Generator Pipeline Repository. This consists of several powershell scripts that work together synchronously to compile and build .json files for the next step.
+
+Monitoring JSON Pipeline
+
+Git Initilization (init-git.ps1) -
+Define the Repository path and initialize the Git Repository using the correct email and project name.
+Azure Availability Alerts Script (run-ai.ps1) - List and create alerts for all production Microsoft Insights Components.
+Creates parameters for the Repository Path. Input for this is requested initially at the start of the script.
+Places a call to the shared.ps1 and generate-file.ps1 scripts for assistance in the code.
+Load the onboading-static.json file.
+Set the repository path.
+Install the Az. ResourceGraph cmdlet
+Use the Set-AzContext to define the subscription.
+Define and set the workspace to the HRBLOCKMONITOR
+Create an array to store the Application Codes and identify them.
+Run a KQL query to gather all resources assoicated with the Microsoft Insights Components in the production enviroment.
+Use the Search-AzGraph to list and query the results. Then for each resource, run a KQL query to define metrics.
+Return results using the Invoke-AzOperationalInsightsQuery cmdlet. Then store and write the results using using the GenrateFile function.
+Azure Availability Alerts Script (availability-alerts.ps1) - List and create alerts for all production Microsoft Web Hosting environments.
+Creates parameters for the Repository Path and Static Alerts Directories. Input for these are requested initially at the start of the script.
+Places a call to the shared.ps1 and generate-file.ps1 scripts for assistance in the code.
+Assign variables to load the onboarding-static.json, workspace details, and set the alert rules path.
+Set up the location for the ARM files to be stored.
+Install modules for use (Azure Resource Graph, Azure Opseration Insights) in the script.
+Uses the Set-AzContext to setup up the tenant, subscription, and enviroment for cmdlets to use in the current session.
+Create the "/{environmentDirectoryName}/availbility/" directory in the relevant location
+Sets up an empty array to store the environment application codes. Sets up an empty Hastable to help store the file results when using the Generate File function. The "@" symbol forces output to reflect the data structure.
+Look at each Resource Group Name. Use REGEX to pull out the Applcation Name (2-4 characters). If the name is not there, add it to appCodes aray.
+Query Microsoft Insights for resources that match the 3 character Application Name (appCode) and the PROD environment.
+Use the Search-AzGraph Cmdlet to query all the instances of the Application Name (appCode) + PROD environment and count them. Capture the environment values from the Resource Groups.
+Use the GenerateFile function from generate-file.ps1 to run the local query identifying all production hosting environment resources and create a results.json file based on matching Resource Groups.
+Reads the Availability Monitoring template and converts it to a PowerShell custom object.
+Remove and replace the values in the template with the results from the local query.
+Save the template and convert it to JSON, then save it to the Availability Monitoring directory.
+File Generator (generate-file.ps1) - This is called by various scripts for help with creating the .json files for other scripts.
+Creates several function parameters that can be used with other scripts.
+Places a call to the shared.ps1 script.
+Runs the Custom-Invoke-AzOperationalInsightsQuery from the shared.ps1 script on the KQL query results provided when it is called.
+Outputs the query details to the CLI and results are converted to JSON.
+Those results are stored to cache (hashtable). If a result is exists in the cache, the location variable now equals the result. This result is put in the CLI output. If it is not in the cache, it runs a query to locate all resource containers using the Azure Search-AzGraph module. The location variable now equals that result. We use the Add-Member module to attach the location name and location value to each result.
+For each result, they are converted to a JSON file, saved to the "environment/auto/" directory where the Set-Content module is used to build the files.
+JSON Generator (generate-json.ps1) - This script builds JSON files for various other Azure services using KQL queries located remotely in Log Analytics HRBLOCKMONITOR Workspace.
+Creates a repository path parameter, then places a call to the generate-file.ps1 and shared.ps1 PowerShell scripts for help to use certain functions.
+Defines a variable for the Resource Groups using the LoadJsonFile function from the shared.ps1 PowerShell script. It loads the onboarding-static.json file.
+Output and list the Resource Groups of the onboarding file.
+Install and use the Az.ResourceGraph modules.
+Setup the Repository Path and build a storage cache.
+Use the Az.Context to define the subscription.
+Define the HRBLOCKMONITOR Workspace usng the Get-AzOperationInsightsWorkspace cmdlet
+For each Resource in the Resource Group list, identify the environment variable. Then use the GenerateFile function to run each KQL query located in the HRBLOCKMONITOR Log Analytics Workspace. The function creates filenames and saves them to the respective environment directory.
+Dynamic Alerts Pipeline -
+
+The DAP consists of two powershell scripts (run-res.ps1 and run-rsg.ps1). Both scripts use embedded KQL queries and custome metrics.json files to calculate and build alerts.
+
+Dynamic Alerts Pipeline (pipeline.yml) - This YAML file automates the build process of the pipeline using an Windows image.
+This file is assigned several automation tasks which run a respective PowerShell file located within the Monitoring JSON Generator Pipeline repository. It uses a Windows virtual Machine with PowerShell Core (pwsh) for Azure Pipelines(PowerShell@2) and Azure Environments(AzurePowerShell@5).
+Initialize Git Repo (init-git.ps1)
+Clean Directory (run-folder-cleanup.ps1)
+Generate Alert Descriptors (generate-json.ps1)
+Generate Alert Rule Descriptors for Applicaiton Insights (run-ai.ps1)
+Gnerate URL Monitoring ARM Templates (url-monitor.ps1)
+Commit Changes (run-git-commit.ps1)
+Dynamic Alerts Pipeline (dynamic-alerts-pipeline.yml) - This YAML file automates the build process of the pipeline using an Ubuntu image.
+This file is assigned several automation tasks which run a respective PowerShell file located within the Monitoring JSON Generator Pipeline repository. It uses a Ubuntu virtual Machine with PowerShell Core (pwsh) for Azure Pipelines(PowerShell@2) and Azure Environments(AzurePowerShell@5).
+Initialize Git Repo (init-git.ps1)
+Clean Directory (run-folder-cleanup.ps1)
+Generate dynamic alert rule descriptors for resources (run-res.ps1)
+Generate dynamic alert rule descriptors for resource groups (run-rsg.ps1)
+Commit Changes (run-git-commit.ps1)
+Azure Resource Script (run-res.ps1) - This builds a dynamic alert .json file for all Microsoft Web Sites and Network Application Gateways assigned to Resource Groups located in the onboarding-dynamic.json file.
+Places a call to the shared.ps1 script to use the LoadJsonFile function to read the "onboarding-dynamic.json" and "resource-metrics.json" files located in the "monitoring-json-generator-pipeline/dynamic-alerts-pipeline/" directory.
+Setup and output the Repository Path used the "pipeline.yml" file located in the "monitoring-json-generator-pipeline/pipeline/" directory.
+Installs the Az.ResourceGraph PowerShell Module.
+Gets a list of all Resource Groups from the onboarding-dynamic.json file, then loops over each Resource Group. It identifies the Application Code and Environment Code to be used later on.
+A local KQL query (Identify and list all Resources using Microsoft.Web/sites and Microsoft.Network/applicationGateways deployments for each Resource Group) is run.
+The Search-AzGraph Module is used to query, find, and list any resources within the Resource Group identified in the local query in step 5. Data related to each Resource is stored in custom objects within PowerShell.
+For each Resource in the Resource Group, HTTP Code metrics are retrieved from the resource-metrics.json file and used to create brand new custom objects. Then those object properties are combined with specific object properties from step 6. This is assigned to a new variable and then converted to JSON where it is written to a new file. The new file is added to the "dynamic-alerts/environment/auto" directory and given a name.
+Azure Resource Group Script (run-rsg.ps1) - This builds a dynamic alert .json file for all Azure Resource Containers assigned to the Resource Groups in the onboarding-dynamic.json file.
+Places a call to the shared.ps1 script to use the LoadJsonFile function to read the "onboarding-dynamic.json" and "rsg-metrics.json" files located in the "monitoring-json-generator-pipeline/dynamic-alerts-pipeline/" directory.
+Setup and output the Repository Path used the "pipeline.yml" file located in the "monitoring-json-generator-pipeline/pipeline/" directory.
+Installs the Az.ResourceGraph PowerShell Module.
+Gets a list of all Resource Groups from the onboarding-dynamic.json file, then loops over each Resource Group. It identifies the Application Code and Environment Code to be used later on.
+A local KQL query (Identify and list all Azure Containers within each Resource Group) is run
+The Search-AzGraph Module is used to query, find, and list any Containers within the Resource Group identified in the local query in step 5. Data related to each Container is stored in custom objects within PowerShell.
+For each Container in the Resource Group, database metrics metrics are retrieved from the resource-metrics.json file and used to create brand new custom objects. Then those object properties are combined with specific object properties from step 6. This is assigned to a new variable and then converted to JSON where it is written to a new file. The new file is added to the "dynamic-alerts/environment/auto" directory and given a name.
+Default Alert Rules
+Static rules
+Dynamic rules
+Additional Topics
+Environment onboarding
+Application/resource group onboarding
+Alerts/thresholds customizations
+SLO SLI Deep Dive
